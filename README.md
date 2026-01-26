@@ -139,13 +139,13 @@ JOB_ID=$(make job-sleep SECONDS=2 | tail -n 1)
 echo JOB_ID=$JOB_ID
 ```
 
-# Stream events live:
+**Stream events live:**
 
 ```bash
 curl -N "http://host.docker.internal:8000/jobs/$JOB_ID/stream?from_id=0"
 ```
 
-# Expected lifecycle:
+**Expected lifecycle:**
 
 - created
 - queued
@@ -157,11 +157,11 @@ curl -N "http://host.docker.internal:8000/jobs/$JOB_ID/stream?from_id=0"
 
 ## Failure and Retry Demo
 
-# Submit a failing job (example uses http_request):
+**Submit a failing job (example uses http_request):**
 
 make test-retry
 
-# Expected lifecycle:
+**Expected lifecycle:**
 
 - running
 - retrying (until attempts exhausted)
@@ -173,7 +173,7 @@ make test-retry
 
 make test
 
-# Tests focus on observable behavior to keep refactors safe.
+**Tests focus on observable behavior to keep refactors safe.**
 
 ---
 
