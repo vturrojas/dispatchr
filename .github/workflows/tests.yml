@@ -26,6 +26,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e "backend[dev]"
 
+      - name: Debug versions
+        run: |
+          python --version
+          pip --version
+          ruff --version
+          pytest --version
+
       - name: Ruff (lint)
         run: |
           cd backend

@@ -148,3 +148,15 @@ test-retry:
 	  | $(PY) -c "import sys,json; print(json.load(sys.stdin)['id'])"); \
 	echo "JOB_ID=$$JOB_ID"; \
 	$(CURL) -N "$(API_BASE)/jobs/$$JOB_ID/stream?from_id=0"
+
+.PHONY: test lint fmt
+
+lint:
+	cd backend && ruff check .
+
+fmt:
+	cd backend && ruff format --check .
+
+test:
+	cd backend && pytest -q
+
