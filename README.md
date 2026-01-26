@@ -1,4 +1,4 @@
-![CI](https://github.com/vturrojas/dispatchr/actions/workflows/tests.yml/badge.svg)
+[![CI](https://github.com/vturrojas/dispatchr/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/vturrojas/dispatchr/actions/workflows/tests.yml)
 
 # DispatchR
 
