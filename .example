@@ -1,0 +1,3 @@
+DATABASE_URL=postgresql+asyncpg://dispatchr:dispatchr@db:5432/dispatchr
+REDIS_URL=redis://redis:6379/0
+API_PORT=8000

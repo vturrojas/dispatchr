@@ -13,6 +13,7 @@ dependencies = [
     "rq",
     "httpx",
     "asyncpg",
+    "alembic",
 ]
 
 [project.optional-dependencies]
