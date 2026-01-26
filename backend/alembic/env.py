@@ -1,6 +1,6 @@
-# ruff: noqa: E402, I001
 import asyncio
 import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -8,29 +8,29 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Alembic Config object
+# Ensure backend/ is on sys.path so "import app.*" works when Alembic runs from backend/
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+import app.db  # noqa: F401, E402
+from app.db import models  # noqa: F401, E402
+from app.db.base import Base  # noqa: E402
+
 config = context.config
 
-# Configure logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-# Import metadata
-from app.db.base import Base
-from app.db import models  # noqa: F401
 
 target_metadata = Base.metadata
 
 
-def get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://dispatchr:dispatchr@localhost:5432/dispatchr",
-    )
+def get_url() -> str:
+    return os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
 
 
 def run_migrations_offline() -> None:
-    url = get_database_url()
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -55,11 +55,11 @@ def do_run_migrations(connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = get_database_url()
+    section = config.get_section(config.config_ini_section) or {}
+    section["sqlalchemy.url"] = get_url()
 
     connectable = async_engine_from_config(
-        configuration,
+        section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
