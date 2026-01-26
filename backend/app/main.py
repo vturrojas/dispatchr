@@ -11,6 +11,22 @@ app = FastAPI(
     version="0.1.0",
 )
 
+app.router.redirect_slashes = False
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.include_router(jobs_router)
 app.include_router(executors_router)
 app.include_router(job_events_router)
