@@ -30,10 +30,10 @@ target-version = "py311"
 select = ["E", "F", "I"]
 
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*"]
-exclude = ["alembic*", "tests*"]
+include = ["app*", "alembic*"]
+exclude = ["tests*"]

@@ -160,3 +160,19 @@ fmt:
 test:
 	cd backend && pytest -q
 
+DB_URL ?= postgresql+asyncpg://dispatchr:dispatchr@localhost:5433/dispatchr
+
+migrate:
+	cd backend && DATABASE_URL=$(DB_URL) alembic -c alembic.ini upgrade head
+
+stamp:
+	cd backend && DATABASE_URL=$(DB_URL) alembic -c alembic.ini stamp head
+
+downgrade:
+	cd backend && DATABASE_URL=$(DB_URL) alembic -c alembic.ini downgrade -1
+
+revision:
+	cd backend && DATABASE_URL=$(DB_URL) alembic -c alembic.ini revision -m "$(MSG)" --autogenerate
+
+req:
+	cd backend && python -m pip install -r requirements.txt

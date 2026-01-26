@@ -1,0 +1,12 @@
+fastapi[standard]
+pydantic
+sqlalchemy>=2.0
+asyncpg
+redis
+rq
+httpx
+alembic
+
+# local dev / tooling
+pytest
+ruff
