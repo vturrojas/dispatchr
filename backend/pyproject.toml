@@ -1,0 +1,16 @@
+[project]
+name = "dispatchr"
+version = "0.1.0"
+description = "Automation & background jobs platform"
+requires-python = ">=3.11"
+
+dependencies = [
+    "fastapi[standard]",
+    "pydantic",
+    "sqlalchemy>=2.0",
+    "aiosqlite",
+    "redis",
+    "rq",
+    "httpx",
+    "asyncpg",
+]

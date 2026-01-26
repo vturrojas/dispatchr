@@ -1,0 +1,73 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=dispatchr
+      - POSTGRES_PASSWORD=dispatchr
+      - POSTGRES_DB=dispatchr
+    ports:
+      - "5433:5432"
+    volumes:
+      - dispatchr_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dispatchr -d dispatchr"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://dispatchr:dispatchr@db:5432/dispatchr
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "app.workers.worker"]
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://dispatchr:dispatchr@db:5432/dispatchr
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "app.workers.scheduler"]
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dispatchr:dispatchr@db:5432/dispatchr
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+
+volumes:
+  dispatchr_pgdata:
