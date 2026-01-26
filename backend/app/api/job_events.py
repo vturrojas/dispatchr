@@ -10,11 +10,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 @router.get("/{job_id}/events", response_model=list[dict])
 async def list_job_events(job_id: str, session: AsyncSession = Depends(get_session)):
-    stmt = (
-        select(JobEvent)
-        .where(JobEvent.job_id == job_id)
-        .order_by(JobEvent.id.asc())
-    )
+    stmt = select(JobEvent).where(JobEvent.job_id == job_id).order_by(JobEvent.id.asc())
     result = await session.execute(stmt)
     events = result.scalars().all()
 

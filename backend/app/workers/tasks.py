@@ -1,8 +1,6 @@
 import asyncio
 import traceback
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import app.db  # noqa: F401
 from app.db.init_db import init_db
 from app.db.models import Job

@@ -6,9 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Job
-from app.jobs.schemas import JobCreate
-from app.workers.queue import queue
 from app.jobs.events import record_event
+from app.jobs.schemas import JobCreate
 
 
 def utcnow() -> datetime:

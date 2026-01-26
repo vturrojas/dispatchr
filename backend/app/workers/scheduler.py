@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime, timezone
 
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.db  # noqa: F401
 from app.db.init_db import init_db
@@ -30,8 +29,7 @@ async def tick():
             .where(
                 or_(
                     # immediate/queued
-                    (Job.status == "queued")
-                    & ((Job.run_at.is_(None)) | (Job.run_at <= now)),
+                    (Job.status == "queued") & ((Job.run_at.is_(None)) | (Job.run_at <= now)),
                     # scheduled -> queued -> enqueued
                     (Job.status == "scheduled") & (Job.run_at <= now),
                 )

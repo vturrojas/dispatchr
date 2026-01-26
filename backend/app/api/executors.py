@@ -44,12 +44,14 @@ def list_executors() -> list[dict[str, Any]]:
     # Only list executors that exist in code
     out: list[dict[str, Any]] = []
     for name in sorted(EXECUTORS.keys()):
-        out.append(EXECUTOR_CATALOG.get(
-            name,
-            {
-                "name": name,
-                "description": "(Undocumented executor)",
-                "payload_example": {},
-            },
-        ))
+        out.append(
+            EXECUTOR_CATALOG.get(
+                name,
+                {
+                    "name": name,
+                    "description": "(Undocumented executor)",
+                    "payload_example": {},
+                },
+            )
+        )
     return out

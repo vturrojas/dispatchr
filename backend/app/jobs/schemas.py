@@ -3,7 +3,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
 JobStatus = Literal["queued", "scheduled", "running", "succeeded", "failed", "canceled"]
 
 
