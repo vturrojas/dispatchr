@@ -2,178 +2,217 @@
 
 # DispatchR
 
-A lightweight, extensible automation & background job execution service built with FastAPI.
+**DispatchR** is a production-style background job execution service built with **FastAPI**, **PostgreSQL**, and **Redis**, with a lightweight **React** UI for observability.
 
-Designed to emphasize correctness, clarity, and safe evolution over premature optimization—while still delivering a “wow factor” through first-class observability (durable event journaling + live SSE streaming).
+The project is intentionally scoped to demonstrate how backend systems handle **asynchronous work**, **durable state**, and **operational visibility** in practice — without unnecessary complexity or overengineering.
 
----
-
-**Tech stack:** FastAPI · PostgreSQL · SQLAlchemy (async) · Redis · RQ · Docker Compose · SSE · Ruff · Pytest
+DispatchR favors clarity, explicit design choices, and debuggability over feature breadth.
 
 ---
 
-## What This Project Demonstrates
+## Why DispatchR Exists
 
-- A clean Job API for creating and observing background work
-- Durable job lifecycle tracking via a `job_events` journal (append-only event history)
-- Asynchronous execution with a scheduler + worker model (Redis + RQ)
-- Real-time event streaming via Server-Sent Events (SSE) for “tail -f” style observability
-- Executor registry pattern for pluggable job types
-- Containerized local environment (Postgres, Redis, API, scheduler, worker)
-- Developer experience tooling via Makefile commands
+Background job systems are often introduced as simple queues, but in real environments the harder problems are:
 
----
+- Understanding *what happened* after a job was submitted  
+- Reconstructing execution history during failures or retries  
+- Observing work as it runs, not just after it finishes  
+- Designing systems that can evolve safely over time  
 
-## Why It Matters
-
-Most “background job” demos stop at “it runs in the background.” DispatchR goes one step further:
-
-- You can explain **what happened**, **when**, and **why** for every job
-- You can watch a job live in real time (SSE) without adding a UI framework or WebSockets
-- Failures and retries are **explicit**, **durable**, and **observable**
-
-This is closer to how production systems are designed:
-- explicit state transitions
-- append-only event logs for auditability
-- simple, composable components (API / scheduler / worker)
+DispatchR was built to explore those concerns directly, using a small but realistic architecture that emphasizes correctness and transparency.
 
 ---
 
-## Non-Goals
+## Design Approach (Backend-Focused)
 
-This project intentionally does not include:
-- Authentication or authorization (intentionally out of scope)
-- Frontend UI (yet)
-- Cron-style scheduling / complex triggers
-- Multi-tenant isolation
-- Rate limiting / quotas
+This project reflects a set of deliberate backend engineering decisions:
 
-These are deferred by design—the focus is a clean core with strong observability.
+- **Explicit lifecycle modeling**  
+  Jobs move through a clearly defined set of states. Transitions are intentional and observable.
 
----
+- **Durable event history**  
+  All state changes are recorded in an append-only `job_events` table, preserving execution history for debugging and auditability.
 
-## Design Tradeoffs
+- **Clear separation of responsibilities**  
+  - The API validates intent and records state  
+  - A scheduler identifies runnable work  
+  - Workers execute jobs and emit events  
 
-- **RQ over Celery**: simpler mental model and fewer moving parts for a portfolio-grade reference system
-- **Event journal (job_events)** instead of “just status fields”: preserves history and makes observability first-class
-- **SSE** for live streaming instead of WebSockets: simpler infra, easier clients, still feels modern and real-time
-- **Registry-based executors**: add new job types without refactoring worker code
+- **Failure and retry visibility**  
+  Retries and failures are first-class concepts, not side effects hidden in logs.
 
----
+- **Operational simplicity**  
+  Server-Sent Events (SSE) are used for live streaming to avoid unnecessary infrastructure, while still enabling real-time visibility.
 
-## Possible Extensions
-
-- Web UI dashboard that tails SSE streams
-- Per-job progress events emitted by executors (`progress` events)
-- Job cancellation + cooperative cancellation in executors
-- Cron scheduling + recurring jobs
-- Auth + multi-tenant isolation
-- Metrics (Prometheus) + tracing (OpenTelemetry)
+These choices mirror patterns used in production backend systems, scaled down to remain readable and maintainable.
 
 ---
 
-## Architecture (High Level)
+## Architecture Overview
 
-
-    ┌──────────┐        ┌───────────────┐
-    │  Client  │───────▶│  FastAPI API   │
-    └──────────┘        └──────┬────────┘
-                                │
-                                │ writes Jobs + JobEvents
-                                ▼
-                           ┌──────────┐
-                           │ Postgres │
-                           └────┬─────┘
-                                │ runnable jobs
-                                ▼
-                         ┌────────────┐       enqueue       ┌─────────┐
-                         │ Scheduler  │────────────────────▶│  Redis  │
-                         └────────────┘                      └────┬────┘
-                                                                    │ dequeue
-                                                                    ▼
-                                                              ┌─────────┐
-                                                              │ Worker  │
-                                                              └────┬────┘
-                                                                   │ executes + records events
-                                                                   ▼
-                                                               JobEvents
-
-
----
-
-## Project Structure
-
-```text
-    backend/
-    └── app/
-        ├── api/            # HTTP routes (jobs, events, SSE stream)
-        ├── jobs/           # job service, schemas, event recording
-        ├── workers/        # scheduler, worker, queue wiring, tasks runner
-        ├── db/             # models, session, init
-        └── main.py         # FastAPI app entrypoint
+```
+Client / CLI
+   │
+   │ REST + SSE
+   ▼
+FastAPI API
+   │
+   │ persists Jobs + JobEvents (append-only)
+   ▼
+PostgreSQL
+   │
+   │ runnable jobs
+   ▼
+Scheduler ─────────────▶ Redis (RQ)
+                           │
+                           │ dequeue
+                           ▼
+                        Worker
+                           │
+                           │ executes job + records events
+                           ▼
+                        JobEvents
 ```
 
 ---
 
-## Run Locally
+## Core Backend Capabilities
+
+- Job creation API with schema validation
+- Explicit lifecycle transitions:
+  - created → queued → enqueued → running → succeeded / failed / retrying
+- Append-only event journal for durable state tracking
+- Scheduler / worker execution model
+- Pluggable executor registry
+- Live execution streaming via Server-Sent Events (SSE)
+- Alembic-managed database migrations
+- Test suite focused on observable behavior
+- CI enforcing linting and correctness
+
+---
+
+## Technology Stack
+
+**API & Data**
+- FastAPI
+- Pydantic
+- SQLAlchemy (async)
+- PostgreSQL 16
+- Alembic
+
+**Async Execution**
+- Redis
+- RQ
+- Dedicated scheduler and worker processes
+
+**Observability**
+- Server-Sent Events (SSE)
+- Durable event records
+
+**Tooling**
+- Docker Compose
+- Ruff
+- Pytest
+- GitHub Actions CI
+
+---
+
+## Local Development
+
+### Start backend services
 
 ```bash
-# from the repo root
 make up
 make ps
 make health
 ```
 
-Interactive API documentation will be available at:
-
+API documentation is available at:
+```
 http://127.0.0.1:8000/docs
-
----
-
-## Demo (Live SSE Streaming)
-
-**Create a job:**
-
-```bash
-JOB_ID=$(make job-sleep SECONDS=2 | tail -n 1)
-echo JOB_ID=$JOB_ID
 ```
 
-**Stream events live:**
+### Start frontend (optional)
 
 ```bash
-curl -N "http://host.docker.internal:8000/jobs/$JOB_ID/stream?from_id=0"
+cd frontend
+npm install
+npm run dev
 ```
 
-**Expected lifecycle:**
-
-- created
-- queued
-- enqueued
-- running
-- succeeded (with result payload)
+Frontend UI:
+```
+http://127.0.0.1:5173
+```
 
 ---
 
-## Failure and Retry Demo
+## API Example
 
-**Submit a failing job (example uses http_request):**
+Create a job:
 
-make test-retry
+```bash
+curl -X POST "http://127.0.0.1:8000/jobs" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"sleep","payload":{"seconds":2}}'
+```
 
-**Expected lifecycle:**
+Stream execution events:
 
-- running
-- retrying (until attempts exhausted)
-- failed (with error and traceback)
+```bash
+curl -N "http://127.0.0.1:8000/jobs/<JOB_ID>/stream?from_id=0"
+```
+
+This provides a `tail -f`-style view of job execution.
 
 ---
 
-## Run Tests 
+## What This Project Signals
 
+DispatchR is intended as a **backend-focused portfolio artifact** that demonstrates:
+
+- Comfort working beyond request/response workflows  
+- Practical experience with asynchronous execution models  
+- Durable state modeling using event-oriented approaches  
+- Thoughtful handling of failures and retries  
+- Emphasis on observability and debuggability  
+- Engineering judgment around scope and tradeoffs  
+
+The project is deliberately modest in size, but representative of the kinds of systems commonly found in internal platforms and automation services.
+
+---
+
+## Non-Goals (Intentional)
+
+To keep the system focused, DispatchR does not include:
+
+- Authentication or authorization
+- Multi-tenant isolation
+- Cron-style scheduling
+- Rate limiting or quotas
+- Distributed tracing or metrics
+
+These are intentionally deferred to preserve clarity in the core design.
+
+---
+
+## Possible Extensions
+
+- Job cancellation
+- Progress events emitted by executors
+- Recurring jobs
+- Authentication and multi-tenancy
+- Metrics and tracing
+
+---
+
+## Tests
+
+```bash
 make test
+```
 
-**Tests focus on observable behavior to keep refactors safe.**
+Tests emphasize externally observable behavior to keep refactors safe.
 
 ---
 
