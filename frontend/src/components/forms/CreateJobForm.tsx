@@ -11,16 +11,6 @@ const DEFAULT_PAYLOAD = `{
   "seconds": 2
 }`;
 
-
-function onChangeType(next: string) {
-  setType(next);
-  const ex = executors.find((e) => e.name === next);
-  if (ex?.payload_example != null) {
-    setPayloadText(JSON.stringify(ex.payload_example, null, 2));
-  }
-}
-
-
 export function CreateJobForm({ onSubmit, submitting }: Props) {
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [type, setType] = useState<string>("");
@@ -38,7 +28,17 @@ export function CreateJobForm({ onSubmit, submitting }: Props) {
         if (cancelled) return;
 
         setExecutors(data);
-        if (!type && data.length > 0) setType(data[0].name);
+
+        // default to first executor
+        if (data.length > 0) {
+          const first = data[0];
+          setType(first.name);
+
+          // preload payload example if provided
+          if (first.payload_example != null) {
+            setPayloadText(JSON.stringify(first.payload_example, null, 2));
+          }
+        }
       } catch (e) {
         if (cancelled) return;
         setLoadError(e instanceof Error ? e.message : String(e));
@@ -49,14 +49,24 @@ export function CreateJobForm({ onSubmit, submitting }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function onChangeType(next: string) {
+    setType(next);
+    const ex = executors.find((e) => e.name === next);
+    if (ex?.payload_example != null) {
+      setPayloadText(JSON.stringify(ex.payload_example, null, 2));
+    }
+  }
 
   const parsedPayload = useMemo(() => {
     try {
       return { ok: true as const, value: JSON.parse(payloadText) as unknown };
     } catch (e) {
-      return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+      return {
+        ok: false as const,
+        error: e instanceof Error ? e.message : String(e),
+      };
     }
   }, [payloadText]);
 
@@ -88,20 +98,44 @@ export function CreateJobForm({ onSubmit, submitting }: Props) {
         </div>
       )}
 
-      <label style={{ display: "grid", gap: 6 }}>
+      <div style={{ display: "grid", gap: 6 }}>
         <span>Executor Type</span>
-        <select
-          value={type}
-          onChange={(e) => onChangeType(e.target.value)}
-          style={{ padding: 8 }}
-        >
-          {executors.map((ex) => (
-            <option key={ex.name} value={ex.name}>
-              {ex.name}
-            </option>
-          ))}
-        </select>
-      </label>
+
+        {executors.length === 0 ? (
+          <div style={{ padding: 10, border: "1px solid #eee", borderRadius: 10, color: "#666" }}>
+            No executors returned by API.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {executors.map((ex) => {
+              const selected = ex.name === type;
+              return (
+                <button
+                  key={ex.name}
+                  type="button"
+                  onClick={() => onChangeType(ex.name)}
+                  style={{
+                    textAlign: "left",
+                    padding: 10,
+                    borderRadius: 10,
+                    border: selected ? "2px solid #111" : "1px solid #eee",
+                    background: selected ? "#f7f7f7" : "white",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <strong>{ex.name}</strong>
+                    {selected && <span style={{ fontSize: 12, color: "#666" }}>selected</span>}
+                  </div>
+                  {ex.description && (
+                    <div style={{ marginTop: 6, color: "#666", fontSize: 13 }}>{ex.description}</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <label style={{ display: "grid", gap: 6 }}>
         <span>Payload (JSON)</span>
@@ -110,11 +144,14 @@ export function CreateJobForm({ onSubmit, submitting }: Props) {
           onChange={(e) => setPayloadText(e.target.value)}
           rows={10}
           spellCheck={false}
-          style={{ padding: 10, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+          style={{
+            padding: 10,
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            borderRadius: 10,
+            border: "1px solid #eee",
+          }}
         />
-        {!parsedPayload.ok && (
-          <span style={{ color: "#b00020" }}>JSON error: {parsedPayload.error}</span>
-        )}
+        {!parsedPayload.ok && <span style={{ color: "#b00020" }}>JSON error: {parsedPayload.error}</span>}
       </label>
 
       {submitError && (
@@ -123,10 +160,13 @@ export function CreateJobForm({ onSubmit, submitting }: Props) {
         </div>
       )}
 
-      <button type="submit" disabled={submitting || !type || !parsedPayload.ok} style={{ padding: "10px 12px" }}>
+      <button
+        type="submit"
+        disabled={submitting || !type || !parsedPayload.ok}
+        style={{ padding: "10px 12px", borderRadius: 10 }}
+      >
         {submitting ? "Creating…" : "Create Job"}
       </button>
     </form>
   );
 }
-
