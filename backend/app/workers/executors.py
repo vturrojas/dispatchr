@@ -3,7 +3,6 @@ from typing import Any
 
 import httpx
 
-
 async def exec_sleep(payload: dict[str, Any]) -> dict[str, Any]:
     seconds = int(payload.get("seconds", 1))
     await asyncio.sleep(seconds)
