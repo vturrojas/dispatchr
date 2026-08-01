@@ -89,6 +89,11 @@ function cursorFor(cache: CachedStream, fromId?: number) {
   return Math.max(cache.lastId, fromId);
 }
 
+function streamUrl(baseUrl: string, jobId: string) {
+  const normalizedBaseUrl = `${baseUrl.replace(/\/+$/, "")}/`;
+  return new URL(`jobs/${encodeURIComponent(jobId)}/stream`, normalizedBaseUrl);
+}
+
 export function useJobStream({ jobId, baseUrl, fromId, enabled = true }: Args) {
   const connectionKey = `${jobId}\u0000${baseUrl}\u0000${fromId ?? ""}\u0000${enabled}`;
   const [stateByJob, setStateByJob] = useState<ReadonlyMap<string, JobStreamState>>(
@@ -102,7 +107,7 @@ export function useJobStream({ jobId, baseUrl, fromId, enabled = true }: Args) {
     if (!enabled) return;
 
     const initialCache = readCache(jobId, fromId);
-    const url = new URL(`/jobs/${encodeURIComponent(jobId)}/stream`, baseUrl);
+    const url = streamUrl(baseUrl, jobId);
     const cursor = cursorFor(initialCache, fromId);
     if (cursor !== undefined) url.searchParams.set("from_id", String(cursor));
 

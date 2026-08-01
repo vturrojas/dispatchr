@@ -44,6 +44,21 @@ describe("useJobStream", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it("preserves the API base path when constructing the stream URL", () => {
+    const { unmount } = renderHook(() =>
+      useJobStream({
+        jobId: "job/with space",
+        baseUrl: "https://dispatchr.test/platform/api/v1",
+        fromId: 12,
+      })
+    );
+
+    expect(latestSource().url).toBe(
+      "https://dispatchr.test/platform/api/v1/jobs/job%2Fwith%20space/stream?from_id=12"
+    );
+    unmount();
+  });
+
   it("ignores malformed external payloads and accepts a valid backend event once", () => {
     const { result, unmount } = renderHook(() =>
       useJobStream({ jobId: "validation-job", baseUrl: "https://dispatchr.test", fromId: 3 })
