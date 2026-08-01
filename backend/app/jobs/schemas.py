@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-JobStatus = Literal["queued", "scheduled", "running", "succeeded", "failed", "canceled"]
+JobStatus = Literal["queued", "scheduled", "enqueued", "running", "succeeded", "failed", "canceled"]
 
 
 class JobCreate(BaseModel):
@@ -18,6 +18,7 @@ class JobOut(BaseModel):
     type: str
     status: JobStatus
     payload: dict[str, Any]
+    result: dict[str, Any] | None
     run_at: datetime | None
     attempts: int
     max_attempts: int
