@@ -46,7 +46,7 @@ jobs:
       - name: Pytest
         run: |
           cd backend
-          pytest -q
+          pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
 
   frontend:
     runs-on: ubuntu-latest
