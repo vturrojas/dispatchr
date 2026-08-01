@@ -35,18 +35,20 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
 
   // Detect user scrolling up (pause auto-follow)
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const current = containerRef.current;
+    if (current === null) return;
+    const container: HTMLDivElement = current;
 
     function onScroll() {
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const distanceFromBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
       // if user is near bottom, keep following
       setAutoFollow(distanceFromBottom < 80);
     }
 
-    el.addEventListener("scroll", onScroll, { passive: true });
+    container.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => el.removeEventListener("scroll", onScroll);
+    return () => container.removeEventListener("scroll", onScroll);
   }, []);
 
   // When items change, scroll to bottom if auto-follow is on

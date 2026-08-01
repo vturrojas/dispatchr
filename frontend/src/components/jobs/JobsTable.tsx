@@ -10,38 +10,46 @@ function fmt(iso: string) {
 
 export function JobsTable({ jobs }: { jobs: Job[] }) {
   const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
-  const seenIdsRef = useRef<Set<string>>(new Set());
+  const seenIdsRef = useRef<Set<string> | null>(null);
+  const timersRef = useRef<number[]>([]);
 
   useEffect(() => {
-    if (!jobs || jobs.length === 0) return;
-
-    const newlySeen: string[] = [];
-    for (const j of jobs) {
-      if (!seenIdsRef.current.has(j.id)) {
-        seenIdsRef.current.add(j.id);
-        newlySeen.push(j.id);
-      }
+    const jobIds = new Set(jobs.map((job) => job.id));
+    const seenIds = seenIdsRef.current;
+    if (seenIds === null) {
+      seenIdsRef.current = jobIds;
+      return;
     }
+
+    const newlySeen = jobs
+      .map((job) => job.id)
+      .filter((id) => !seenIds.has(id));
+    seenIdsRef.current = new Set([...seenIds, ...jobIds]);
     if (newlySeen.length === 0) return;
 
-    // Add highlights
     setHighlighted((prev) => {
       const next = new Set(prev);
       for (const id of newlySeen) next.add(id);
       return next;
     });
 
-    // Remove highlights after a short delay
     const timeout = window.setTimeout(() => {
+      timersRef.current = timersRef.current.filter((timer) => timer !== timeout);
       setHighlighted((prev) => {
         const next = new Set(prev);
         for (const id of newlySeen) next.delete(id);
         return next;
       });
     }, 1500);
-
-    return () => window.clearTimeout(timeout);
+    timersRef.current = [...timersRef.current, timeout];
   }, [jobs]);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of timersRef.current) window.clearTimeout(timer);
+      timersRef.current = [];
+    };
+  }, []);
 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>

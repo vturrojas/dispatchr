@@ -1,21 +1,30 @@
+export type JobStatus =
+  | "queued"
+  | "scheduled"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "canceled";
+
 export type Job = {
   id: string;
   type: string;
-  status: string;
-  payload: unknown;
+  status: JobStatus;
+  payload: Record<string, unknown>;
   attempts: number;
   max_attempts: number;
-  result?: unknown;
-  last_error?: string;
-  run_at?: string;
+  result: Record<string, unknown> | null;
+  last_error: string | null;
+  run_at: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 export type JobEvent = {
   id: number;
   job_id: string;
   event: string;
-  message?: string;
+  message?: string | null;
   data?: unknown;
   created_at: string;
 };

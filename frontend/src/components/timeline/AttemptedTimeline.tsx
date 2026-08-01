@@ -143,19 +143,16 @@ function headerSummary(g: AttemptGroup) {
 }
 
 export function AttemptedTimeline({ items }: { items: TimelineItem[] }) {
-  if (!items || items.length === 0) return <Timeline items={items} />;
-
   const groups = useMemo(() => groupByAttempt(items), [items]);
-
-  // If we never detected an attempt > 0, grouping isn’t helpful.
   const maxAttempt = useMemo(
-    () => Math.max(...groups.map((g) => g.attempt)),
+    () => groups.reduce((maximum, group) => Math.max(maximum, group.attempt), 0),
     [groups]
   );
+  const [collapseAttempts, setCollapseAttempts] = useState(true);
+
   if (maxAttempt <= 0) return <Timeline items={items} />;
 
   const latestAttempt = maxAttempt;
-  const [collapseAttempts, setCollapseAttempts] = useState(true);
 
   return (
     <div style={{ display: "grid", gap: 12 }}>

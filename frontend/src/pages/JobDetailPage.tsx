@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { getJob, listJobEvents } from "../api/jobs";
 import type { Job, JobEvent } from "../api/types";
 import { useJobStream } from "../hooks/useJobStream";
@@ -33,9 +33,13 @@ function formatDuration(ms: number) {
 }
 
 export function JobDetailPage() {
-  const { jobId } = useParams();
-  if (!jobId) throw new Error("Missing jobId");
+  const { jobId } = useParams<"jobId">();
+  if (!jobId) return <Navigate to="/404" replace />;
 
+  return <JobDetail jobId={jobId} />;
+}
+
+function JobDetail({ jobId }: { jobId: string }) {
   const baseUrl = import.meta.env.VITE_API_BASE_URL as string;
 
   const [job, setJob] = useState<Job | null>(null);
@@ -44,11 +48,11 @@ export function JobDetailPage() {
   const [err, setErr] = useState<string | null>(null);
 
   // Used to update "duration" every second while a job is in-flight
-  const [nowTick, setNowTick] = useState(0);
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
 
   useEffect(() => {
     if (isTerminal(job?.status)) return;
-    const id = window.setInterval(() => setNowTick((n) => n + 1), 1000);
+    const id = window.setInterval(() => setNowTimestamp(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, [job?.status]);
 
@@ -145,12 +149,12 @@ export function JobDetailPage() {
     const inFlight = status === "running" || status === "retrying" || status === "queued" || status === "enqueued";
 
     if (inFlight) {
-      const ms = msBetween(running.created_at, new Date().toISOString());
+      const ms = msBetween(running.created_at, new Date(nowTimestamp).toISOString());
       return ms == null ? null : { label: formatDuration(ms), running: true };
     }
 
     return null;
-  }, [timeline, job?.status, nowTick]);
+  }, [timeline, job?.status, nowTimestamp]);
 
   return (
     <div style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>

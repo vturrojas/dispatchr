@@ -18,10 +18,9 @@ function safeDateMs(value: unknown): number {
 }
 
 function sortJobsDesc(list: Job[]): Job[] {
-  // Prefer created_at; fall back to updated_at if present; fall back to id stable-ish
   return list
     .slice()
-    .sort((a, b) => safeDateMs((b as any).created_at ?? (b as any).updated_at) - safeDateMs((a as any).created_at ?? (a as any).updated_at));
+    .sort((a, b) => safeDateMs(b.created_at) - safeDateMs(a.created_at));
 }
 
 function upsertJobInto(list: Job[], job: Job): Job[] {
