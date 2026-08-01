@@ -8,15 +8,11 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     coverage: {
       provider: "v8",
-      include: [
-        "src/components/timeline/AttemptedTimeline.tsx",
-        "src/components/jobs/JobsTable.tsx",
-        "src/hooks/useJobStream.ts",
-        "src/hooks/useJobTimeline.ts",
-        "src/components/timeline/Timeline.tsx",
-        "src/pages/JobDetailPage.tsx",
-        "src/hooks/useJobs.ts",
-        "src/api/jobs.ts",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
+        "src/vite-env.d.ts",
       ],
       thresholds: {
         lines: 80,
