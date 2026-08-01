@@ -1,6 +1,8 @@
 import asyncio
 import traceback
 
+from sqlalchemy import update
+
 import app.db  # noqa: F401
 from app.db.init_db import init_db
 from app.db.models import Job
@@ -18,17 +20,18 @@ async def _run_job_async(job_id: str) -> None:
     await init_db()
 
     async with AsyncSessionLocal() as session:  # type: AsyncSession
-        job = await session.get(Job, job_id)
-        if not job:
+        # A single conditional write is the delivery claim. Concurrent workers
+        # cannot both advance the same runnable row to another attempt.
+        claim = await session.execute(
+            update(Job)
+            .where(Job.id == job_id, Job.status.in_(("queued", "enqueued")))
+            .values(status="running", attempts=Job.attempts + 1)
+            .returning(Job)
+        )
+        job = claim.scalar_one_or_none()
+        if job is None:
             return
 
-        # optimistic guard (belt + suspenders)
-        if job.status not in ("queued", "enqueued"):
-            return
-
-        # state: running
-        job.status = "running"
-        job.attempts += 1
         await record_event(session, job.id, "running", f"Worker started attempt {job.attempts}")
         await session.commit()
 
@@ -58,6 +61,9 @@ async def _run_job_async(job_id: str) -> None:
             job.last_error = err
 
             if job.attempts < job.max_attempts:
+                # Persist scheduler-recoverable retry intent before touching
+                # Redis. Duplicate deliveries remain protected by the worker's
+                # conditional database claim above.
                 job.status = "queued"
                 await record_event(
                     session,
@@ -76,6 +82,8 @@ async def _run_job_async(job_id: str) -> None:
                     data={"error": err, "traceback": tb},
                 )
 
+        # Redis and the database are not atomic. Commit the retry intent first so
+        # either the scheduler or this immediate enqueue can deliver it.
         await session.commit()
 
         # worker-driven retry loop: re-enqueue immediately
@@ -83,6 +91,7 @@ async def _run_job_async(job_id: str) -> None:
             from app.workers.queue import queue
 
             rq_job = queue.enqueue("app.workers.tasks.run_job", job.id)
+            job.status = "enqueued"
             await record_event(
                 session,
                 job.id,
