@@ -119,6 +119,12 @@ Scheduler ─────────────▶ Redis (RQ)
 
 ## Local Development
 
+### Prerequisites
+
+- Python 3.11 or later
+- Node.js 22.22.2, as pinned in [`.nvmrc`](.nvmrc); the frontend declares `>=22.22.2` in [`package.json`](frontend/package.json).
+- Docker Engine or Docker Desktop with the Docker Compose v2 plugin (`docker compose`), required for `make up` and service startup.
+
 ### Start backend services
 
 ```bash
@@ -136,7 +142,7 @@ http://127.0.0.1:8000/docs
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -206,13 +212,40 @@ These are intentionally deferred to preserve clarity in the core design.
 
 ---
 
-## Tests
+## Validation
+
+### Backend
+
+Create and activate a host-side development environment from the repository root:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e "backend[dev]"
+```
+
+With the environment active, run the backend quality gates:
+
+```bash
+make lint
+make fmt
 make test
 ```
 
-Tests emphasize externally observable behavior to keep refactors safe.
+These targets run `ruff check .`, `ruff format --check .`, and `pytest -q` in `backend/`, respectively. `make test` validates only the backend.
+
+### Frontend
+
+Install the locked dependencies and run every frontend quality gate:
+
+```bash
+cd frontend
+npm ci
+npm run test
+npm run coverage
+npm run lint
+npm run build
+```
 
 ---
 
