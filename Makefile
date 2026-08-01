@@ -11,8 +11,8 @@ SHELL := /bin/bash
 
 COMPOSE ?= docker compose
 
-# From WSL, use host.docker.internal (works for Docker Desktop)
-API_HOST ?= host.docker.internal
+# Docker Compose publishes the API port on host loopback.
+API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
 API_BASE := http://$(API_HOST):$(API_PORT)
 
@@ -22,6 +22,8 @@ PY   ?= python3
 
 SECONDS ?= 2
 JOB_ID ?=
+DISPATCHR_SMOKE_SECONDS := $(value SECONDS)
+export DISPATCHR_SMOKE_SECONDS
 
 .PHONY: help up build rebuild down restart ps logs logs-api logs-worker logs-scheduler \
         health executors jobs job-sleep events stream tail \
@@ -62,8 +64,8 @@ help:
 	@echo "  make test-retry               Create failing job (http_request) + stream"
 	@echo ""
 	@echo "Config overrides:"
-	@echo "  API_HOST=host.docker.internal API_PORT=8000"
-	@echo "  (Example) make health API_HOST=172.29.224.1"
+	@echo "  API_HOST=127.0.0.1 API_PORT=8000"
+	@echo "  Override API_HOST when Docker host routing differs."
 
 up:
 	$(COMPOSE) up -d
@@ -131,23 +133,33 @@ rq-peek:
 rq-keys:
 	@$(COMPOSE) exec redis redis-cli KEYS "rq:*"
 
-test-live:
-	@JOB_ID=$$($(CURL) -sS -X POST $(API_BASE)/jobs \
+test-live: export DISPATCHR_SMOKE_TYPE = sleep
+test-live: export DISPATCHR_SMOKE_TERMINAL = succeeded
+test-live: export DISPATCHR_SMOKE_REQUIRE_RETRY = 0
+test-retry: export DISPATCHR_SMOKE_TYPE = retry
+test-retry: export DISPATCHR_SMOKE_TERMINAL = failed
+test-retry: export DISPATCHR_SMOKE_REQUIRE_RETRY = 1
+test-live test-retry:
+	@set -o pipefail; \
+	if [[ "$${DISPATCHR_SMOKE_TYPE}" == "sleep" ]]; then \
+	  if [[ ! "$${DISPATCHR_SMOKE_SECONDS}" =~ ^[0-9]+$$ ]]; then echo "ERROR: SECONDS must contain only digits" >&2; exit 2; fi; \
+	  STREAM_MAX_TIME=$$($(PY) -c 'import os, sys; seconds = int(os.environ["DISPATCHR_SMOKE_SECONDS"], 10); print(seconds + 15) if seconds <= 2_147_483_600 else sys.exit("ERROR: SECONDS exceeds supported range")') || exit $$?; \
+	  PAYLOAD=$$($(PY) -c 'import json, os; print(json.dumps({"type": "sleep", "payload": {"seconds": int(os.environ["DISPATCHR_SMOKE_SECONDS"])}}))') || exit $$?; \
+	else \
+	  STREAM_MAX_TIME=30; \
+	  PAYLOAD='{"type":"http_request","payload":{"url":"http://127.0.0.1:1"}}'; \
+	fi; \
+	RESPONSE=$$($(CURL) --connect-timeout 5 -fsS -X POST $(API_BASE)/jobs \
 	  -H 'Content-Type: application/json' \
-	  -d '{"type":"sleep","payload":{"seconds":$(SECONDS)}}' \
-	  | $(PY) -c "import sys,json; print(json.load(sys.stdin)['id'])"); \
+	  -d "$$PAYLOAD") || exit $$?; \
+	JOB_ID=$$(printf '%s' "$$RESPONSE" | $(PY) -c "import sys,json; print(json.load(sys.stdin)['id'])") || exit $$?; \
 	echo "JOB_ID=$$JOB_ID"; \
-	$(CURL) -N "$(API_BASE)/jobs/$$JOB_ID/stream?from_id=0"
-
-# NOTE: This assumes your http_request executor accepts {"url": "..."}.
-# If your schema differs, tell me and I’ll adjust this payload.
-test-retry:
-	@JOB_ID=$$($(CURL) -sS -X POST $(API_BASE)/jobs \
-	  -H 'Content-Type: application/json' \
-	  -d '{"type":"http_request","payload":{"url":"http://127.0.0.1:1"}}' \
-	  | $(PY) -c "import sys,json; print(json.load(sys.stdin)['id'])"); \
-	echo "JOB_ID=$$JOB_ID"; \
-	$(CURL) -N "$(API_BASE)/jobs/$$JOB_ID/stream?from_id=0"
+	$(CURL) --connect-timeout 5 --max-time "$$STREAM_MAX_TIME" -sN "$(API_BASE)/jobs/$$JOB_ID/stream?from_id=0" | \
+	  awk -v expected="$${DISPATCHR_SMOKE_TERMINAL}" -v require_retry="$${DISPATCHR_SMOKE_REQUIRE_RETRY}" '{ sub(/\r$$/, ""); print; fflush() } $$1 == "event:" { current = $$2; if (current == "retrying") saw_retry = 1 } $$0 == "" && (current == "succeeded" || current == "failed") { terminal = 1; if (current != expected) { print "ERROR: unexpected terminal event " current "; expected " expected > "/dev/stderr"; exit 3 } if (require_retry == 1 && !saw_retry) { print "ERROR: terminal failed arrived before any retrying event" > "/dev/stderr"; exit 5 } exit 0 } END { if (!terminal) { print "ERROR: SSE ended before terminal event " expected > "/dev/stderr"; exit 4 } }'; \
+	statuses=("$${PIPESTATUS[@]}"); \
+	curl_status=$${statuses[0]}; awk_status=$${statuses[1]}; \
+	if (( curl_status != 0 && curl_status != 23 )); then echo "ERROR: SSE curl exited $$curl_status" >&2; exit "$$curl_status"; fi; \
+	exit "$$awk_status"
 
 .PHONY: test lint fmt
 
