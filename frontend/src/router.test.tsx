@@ -23,7 +23,7 @@ describe("application router", () => {
   it("redirects the root route to jobs", async () => {
     await router.navigate("/");
     await waitFor(() => expect(router.state.location.pathname).toBe("/jobs"));
-    expect(screen.getByRole("heading", { name: "Jobs owner" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Jobs owner" })).toBeInTheDocument();
   });
 
   it("owns unknown routes with the not-found page", async () => {
