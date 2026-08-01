@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { listJobs } from "../api/jobs";
 import type { Job } from "../api/types";
 import { StatusChip } from "../components/common/StatusChip";
