@@ -1,10 +1,14 @@
-export type JobStatus =
-  | "queued"
-  | "scheduled"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceled";
+export const JOB_STATUSES = [
+  "queued",
+  "scheduled",
+  "enqueued",
+  "running",
+  "succeeded",
+  "failed",
+  "canceled",
+] as const;
+
+export type JobStatus = (typeof JOB_STATUSES)[number];
 
 export type Job = {
   id: string;

@@ -79,8 +79,8 @@ Scheduler ─────────────▶ Redis (RQ)
 ## Core Backend Capabilities
 
 - Job creation API with schema validation
-- Explicit lifecycle transitions:
-  - created → queued → enqueued → running → succeeded / failed / retrying
+- Persisted job states are `queued`, `scheduled`, `enqueued`, `running`, `succeeded`, `failed`, and `canceled`.
+- Lifecycle events include `created`, `queued`, `scheduled`, `enqueued`, `running`, `retrying`, `succeeded`, and `failed`. `retrying` is an append-only event; the stored job returns to `queued` and never persists `retrying`. `canceled` is recognized, but there is no cancellation operation.
 - Append-only event journal for durable state tracking
 - Scheduler / worker execution model
 - Pluggable executor registry
@@ -198,7 +198,7 @@ These are intentionally deferred to preserve clarity in the core design.
 
 ## Possible Extensions
 
-- Job cancellation
+- A public job-cancellation operation.
 - Progress events emitted by executors
 - Recurring jobs
 - Authentication and multi-tenancy
